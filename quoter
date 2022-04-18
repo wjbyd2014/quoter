@@ -1,1 +1,24 @@
+Function countStock(fileName,beginDate,endDate);
+Begin
+    if not fileName then
+        return '';
 
+    fileName := "E:\\crawler\\crawler\\行业资金\\保险\\result.txt";
+    size := rdo2 filesize("", fileName);
+    ret := rdo2 readFile(rwraw(), "", fileName, 0, size, data);
+    if not ret then
+        return '';
+        
+    stocks := str2array(data, ";");
+    for i := 0 to length(stocks) - 1 do
+    begin
+         if not stocks[i] then
+             continue;
+             
+        stock := str2array(stocks[i], ":");
+        stockName := stock[0];
+        stockCode := stock[1];
+        echo stockName, stockCode;
+    end
+    return stocks;
+End;
