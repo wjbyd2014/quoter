@@ -22,9 +22,22 @@ Begin
     end
 End;
 
+// 计算股票涨幅
 Function getZF(date, stockCode);
 Begin
     SetSysParam(PN_Stock(), stockCode);
     EndT:=inttodate(date);
     return StockZf4(EndT);
+End;
+
+// 遍历目录中的stock文件
+Function iterDir(dirPath);
+Begin
+    arrFiles := rdo2 filelist("", dirPath + '\\*.stock');
+    result := array();
+    for i := 0 to length(arrFiles) - 1 do
+    begin
+        result[i] := dirPath + '\\' + arrFiles[i]['FileName'];
+    end
+    return result;
 End;
