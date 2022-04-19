@@ -1,9 +1,9 @@
-Function countStock(fileName,beginDate,endDate);
+Function countStock(fileName,date);
 Begin
     if not fileName then
         return '';
 
-    fileName := "E:\\crawler\\crawler\\行业资金\\保险\\result.txt";
+    fileName := "E:\\crawler\\crawler\\行业资金\\通信设备\\result.txt";
     size := rdo2 filesize("", fileName);
     ret := rdo2 readFile(rwraw(), "", fileName, 0, size, data);
     if not ret then
@@ -20,5 +20,11 @@ Begin
         stockCode := stock[1];
         echo stockName, stockCode;
     end
-    return stocks;
+End;
+
+Function getZF(date, stockCode);
+Begin
+    SetSysParam(PN_Stock(), stockCode);
+    EndT:=inttodate(date);
+    return StockZf4(EndT);
 End;
