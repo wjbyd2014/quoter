@@ -1,14 +1,35 @@
-Function countStock(fileName,date);
+Function countStock(path,date);
 Begin
-    if not fileName then
-        return '';
-
-    fileName := "E:\\crawler\\crawler\\行业资金\\通信设备\\result.txt";
-    size := rdo2 filesize("", fileName);
-    ret := rdo2 readFile(rwraw(), "", fileName, 0, size, data);
-    if not ret then
-        return '';
+    if not path then
+        return '非法路径';
         
+    板块文件列表 := iterDir(path);
+    板块数量 := length(板块文件列表);
+    
+    if 板块数量 = 0 then
+       return path + '中没有发现任何stock文件';
+
+    for i := 0 to 板块数量 - 1 do
+    begin
+         procFile(板块文件列表[i]);
+    end
+End;
+
+Function procFile(fullFileName);
+Begin
+    fileName := str2array(fullFileName, '\\')[3];
+    arr := str2array(fileName, '.');
+    板块类型 := arr[0];
+    板块名称 := arr[1];
+    
+    size := rdo2 filesize("", fullFileName);
+    ret := rdo2 readFile(rwraw(), "", fullFileName, 0, size, data);
+    if not ret then
+        return;
+        
+    if not data then
+       return;
+       
     stocks := str2array(data, ";");
     for i := 0 to length(stocks) - 1 do
     begin
