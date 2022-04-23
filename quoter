@@ -11,11 +11,11 @@ Begin
 
     for i := 0 to 板块数量 - 1 do
     begin
-         procFile(板块文件列表[i]);
+         procFile(板块文件列表[i], date);
     end
 End;
 
-Function procFile(fullFileName);
+Function procFile(fullFileName, date);
 Begin
     fileName := str2array(fullFileName, '\\')[3];
     arr := str2array(fileName, '.');
@@ -30,8 +30,10 @@ Begin
     if not data then
        return;
        
+    sumzf := 0.0;
     stocks := str2array(data, ";");
-    for i := 0 to length(stocks) - 1 do
+    股票数量 := length(stocks);
+    for i := 0 to 股票数量 - 1 do
     begin
          if not stocks[i] then
              continue;
@@ -39,8 +41,11 @@ Begin
         stock := str2array(stocks[i], ":");
         stockName := stock[0];
         stockCode := stock[1];
-        echo stockName, stockCode;
+        zf := getZF(date, stockCode);
+        sumzf += zf;
     end
+    
+    return sumzf / (股票数量 - 1);
 End;
 
 // 计算股票涨幅
