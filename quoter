@@ -2,27 +2,33 @@ Function countStock(path,date1,date2);
 Begin
     if not path then
         return '非法路径';
-        
+
+    // 获取板块信息文件，计算板块总数
     bkFileList := iterDir(path);
     fileNum := length(bkFileList);
     
     if fileNum = 0 then
        return path + '中没有发现任何stock文件';
 
+    // 解析板块文件，获取板块类型，板块名，股票列表
     arrBk := parseFile(bkFileList, fileNum);
 
     bkZf := array();
     bkNum := length(arrBk);
+    
+    // 计算每一天，每一个板块的平均涨幅，取top5记录下来
     for d := date1 to date2 do
     begin
         for i := 0 to bkNum - 1 do
         begin
             bkInfo := arrBk[i];
             zf := countZF(bkInfo['stocks'], d);
-            bkZf[i] := array('bkType':bkInfo['bkType'], 'bkName':bkInfo['bkName'], 'bkZF':zf);
+            bkZf[i] := array('板块类型':bkInfo['bkType'], '板块名称':bkInfo['bkName'], '板块平均涨幅':zf);
         end
         
-        echo 'done';
+        // 按板块平均涨幅一列排序
+        sortTableByField(bkZf,"板块平均涨幅", 0);
+        store(bkZf);
     end
 End;
 
@@ -93,3 +99,8 @@ begin
     end
     return retArray;
 End;
+
+Function store(bkZf);
+begin
+     echo 'store bfZf';
+end;
