@@ -1,51 +1,53 @@
-Function countStock(path,date);
+Function countStock(path,date1,date2);
 Begin
     if not path then
         return '非法路径';
         
-    板块文件列表 := iterDir(path);
-    板块数量 := length(板块文件列表);
+    bkFileList := iterDir(path);
+    fileNum := length(bkFileList);
     
-    if 板块数量 = 0 then
+    if fileNum = 0 then
        return path + '中没有发现任何stock文件';
 
-    for i := 0 to 板块数量 - 1 do
+    arrBk := parseFile(bkFileList, fileNum);
+
+    bkZf := array();
+    bkNum := length(arrBk);
+    for d := date1 to date2 do
     begin
-         procFile(板块文件列表[i], date);
+        for i := 0 to bkNum - 1 do
+        begin
+            bkInfo := arrBk[i];
+            zf := countZF(bkInfo['stocks'], d);
+            bkZf[i] := array('bkType':bkInfo['bkType'], 'bkName':bkInfo['bkName'], 'bkZF':zf);
+        end
+        
+        echo 'done';
     end
 End;
 
-Function procFile(fullFileName, date);
+Function countZF(stocks, date);
 Begin
-    fileName := str2array(fullFileName, '\\')[3];
-    arr := str2array(fileName, '.');
-    板块类型 := arr[0];
-    板块名称 := arr[1];
-    
-    size := rdo2 filesize("", fullFileName);
-    ret := rdo2 readFile(rwraw(), "", fullFileName, 0, size, data);
-    if not ret then
-        return;
-        
-    if not data then
-       return;
-       
     sumzf := 0.0;
-    stocks := str2array(data, ";");
-    股票数量 := length(stocks);
-    for i := 0 to 股票数量 - 1 do
+    num := 0;
+    stockNum := length(stocks);
+    for i := 0 to stockNum - 1 do
     begin
-         if not stocks[i] then
-             continue;
-             
+        if not stocks[i] then
+            continue;
+
         stock := str2array(stocks[i], ":");
         stockName := stock[0];
         stockCode := stock[1];
+
+        if not spec(IsTradeDay(inttodate(date)), stockCode) then
+            continue;
+             
         zf := getZF(date, stockCode);
+        num += 1;
         sumzf += zf;
     end
-    
-    return sumzf / (股票数量 - 1);
+    return sumzf / num;
 End;
 
 // 计算股票涨幅
@@ -66,4 +68,28 @@ Begin
         result[i] := dirPath + '\\' + arrFiles[i]['FileName'];
     end
     return result;
+End;
+
+Function parseFile(stockFileList, fileNum);
+begin
+    retArray := array();
+    for i := 0 to fileNum - 1 do
+    begin
+        fileName := str2array(stockFileList[i], '\\')[3];
+        arr := str2array(fileName, '.');
+        bkType := arr[0];
+        bkName := arr[1];
+
+        size := rdo2 filesize("", stockFileList[i]);
+        retRead := rdo2 readFile(rwraw(), "", stockFileList[i], 0, size, data);
+        if not retRead then
+            return;
+
+        if not data then
+           return;
+
+        stocks := str2array(data, ";");
+        retArray[i] := array('bkType':bkType, 'bkName':bkName, 'stocks': stocks);
+    end
+    return retArray;
 End;
