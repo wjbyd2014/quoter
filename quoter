@@ -19,6 +19,9 @@ Begin
     // 计算每一天，每一个板块的平均涨幅，取top5记录下来
     for d := date1 to date2 do
     begin
+        if not spec(isTradeDay(inttodate(d)), 'SH000001') then
+            continue;
+            
         for i := 0 to bkNum - 1 do
         begin
             bkInfo := arrBk[i];
@@ -28,7 +31,7 @@ Begin
         
         // 按板块平均涨幅一列排序
         sortTableByField(bkZf,"板块平均涨幅", 0);
-        store(bkZf);
+        store(bkZf, d);
     end
 End;
 
@@ -59,9 +62,8 @@ End;
 // 计算股票涨幅
 Function getZF(date, stockCode);
 Begin
-    SetSysParam(PN_Stock(), stockCode);
-    EndT:=inttodate(date);
-    return StockZf4(EndT);
+    EndT:= inttodate(date);
+    return spec(StockZf4(EndT), stockCode);
 End;
 
 // 遍历目录中的stock文件
@@ -100,7 +102,8 @@ begin
     return retArray;
 End;
 
-Function store(bkZf);
+Function store(data, d);
 begin
-     echo 'store bfZf';
+     fileName := "D:\\板块涨幅\\" + IntToStr(d) + '.xls';
+     rdo2 exportfile(ftxls(), "", fileName, data);
 end;
