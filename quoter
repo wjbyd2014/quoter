@@ -25,8 +25,30 @@ Begin
         for i := 0 to bkNum - 1 do
         begin
             bkInfo := arrBk[i];
-            zf := countZF(bkInfo['stocks'], d);
-            bkZf[i] := array('板块类型':bkInfo['bkType'], '板块名称':bkInfo['bkName'], '板块平均涨幅':zf);
+            
+            // 计算某一个板块单日涨幅信息
+            ret := countZF(bkInfo['stocks'], d);
+            avgzf := ret['平均涨幅'];
+            ggzf := ret['个股涨幅'];
+            
+            // 对该板块的个股涨幅做一次排序
+            sortTableByField(ggzf, '股票涨幅', 0);
+            
+            // 计算龙1-龙5
+            龙头 := GetTopN(ggzf, 5);
+            龙头数 := length(龙头);
+            bestStocks := zeros(5, array('股票名称', '股票涨幅'));
+            for j := 0 to 龙头数 - 1 do
+                bestStocks[j] := array('股票名称':龙头[j]['股票名称']+'('+龙头[j]['股票代码']+')',
+                              '股票涨幅':龙头[j]['股票涨幅']);
+                
+            // 保存板块涨幅信息
+            bkZf[i] := array('板块类型':bkInfo['bkType'], '板块名称':bkInfo['bkName'], '板块平均涨幅':avgzf,
+                    '龙一股票':bestStocks[0]['股票名称'], '龙一涨幅':bestStocks[0]['股票涨幅'],
+                    '龙二股票':bestStocks[1]['股票名称'], '龙二涨幅':bestStocks[1]['股票涨幅'],
+                    '龙三股票':bestStocks[2]['股票名称'], '龙三涨幅':bestStocks[2]['股票涨幅'],
+                    '龙四股票':bestStocks[3]['股票名称'], '龙四涨幅':bestStocks[3]['股票涨幅'],
+                    '龙五股票':bestStocks[4]['股票名称'], '龙五涨幅':bestStocks[4]['股票涨幅']);
         end
         
         // 按板块平均涨幅一列排序
@@ -40,6 +62,7 @@ Begin
     sumzf := 0.0;
     num := 0;
     stockNum := length(stocks);
+    arrzf := array();
     for i := 0 to stockNum - 1 do
     begin
         if not stocks[i] then
@@ -53,10 +76,11 @@ Begin
             continue;
              
         zf := getZF(date, stockCode);
-        num += 1;
         sumzf += zf;
+        arrzf[num] := array('股票名称':stockName, '股票代码':stockCode, '股票涨幅':zf);
+        num += 1;
     end
-    return sumzf / num;
+    return array('平均涨幅':sumzf / num, '个股涨幅':arrzf);
 End;
 
 // 计算股票涨幅
