@@ -28,7 +28,6 @@ Begin
             
             // 计算某一个板块单日涨幅信息
             ret := countZF(bkInfo['stocks'], d);
-            avgzf := ret['平均涨幅'];
             ggzf := ret['个股涨幅'];
             
             // 对该板块的个股涨幅做一次排序
@@ -43,7 +42,10 @@ Begin
                               '股票涨幅':龙头[j]['股票涨幅']);
                 
             // 保存板块涨幅信息
-            bkZf[i] := array('板块类型':bkInfo['bkType'], '板块名称':bkInfo['bkName'], '板块平均涨幅':avgzf,
+            bkZf[i] := array('板块类型':bkInfo['bkType'], '板块名称':bkInfo['bkName'],
+                    '板块平均涨幅':ret['平均涨幅'],
+                    '涨停股票数':ret['涨停股票数'],
+                    '涨幅超过7%股票数':ret['大涨股票数'],
                     '龙一股票':bestStocks[0]['股票名称'], '龙一涨幅':bestStocks[0]['股票涨幅'],
                     '龙二股票':bestStocks[1]['股票名称'], '龙二涨幅':bestStocks[1]['股票涨幅'],
                     '龙三股票':bestStocks[2]['股票名称'], '龙三涨幅':bestStocks[2]['股票涨幅'],
@@ -63,6 +65,8 @@ Begin
     num := 0;
     stockNum := length(stocks);
     arrzf := array();
+    ztNum := 0;
+    zfExceed7Num := 0;
     for i := 0 to stockNum - 1 do
     begin
         if not stocks[i] then
@@ -74,13 +78,20 @@ Begin
 
         if not spec(IsTradeDay(inttodate(date)), stockCode) then
             continue;
+
+        if spec(StockIsZt(inttodate(date)), stockCode) then
+            ztNum += 1;
              
         zf := getZF(date, stockCode);
+        
+        if zf > 7 then
+           zfExceed7Num += 1;
+           
         sumzf += zf;
         arrzf[num] := array('股票名称':stockName, '股票代码':stockCode, '股票涨幅':zf);
         num += 1;
     end
-    return array('平均涨幅':sumzf / num, '个股涨幅':arrzf);
+    return array('平均涨幅':sumzf / num, '个股涨幅':arrzf, '涨停股票数':ztNum, '大涨股票数':zfExceed7Num);
 End;
 
 // 计算股票涨幅
