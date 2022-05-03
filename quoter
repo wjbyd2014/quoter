@@ -28,6 +28,11 @@ Begin
             
             // 计算某一个板块单日涨幅信息
             ret := countZF(bkInfo['stocks'], d);
+            
+            // 跳过全ST板块
+            if ret['股票总数'] = 0 then
+                continue;
+                
             ggzf := ret['个股涨幅'];
             
             // 对该板块的个股涨幅做一次排序
