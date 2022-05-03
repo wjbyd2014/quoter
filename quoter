@@ -43,6 +43,7 @@ Begin
                 
             // 保存板块涨幅信息
             bkZf[i] := array('板块类型':bkInfo['bkType'], '板块名称':bkInfo['bkName'],
+                    '股票总数':ret['股票总数'],
                     '板块平均涨幅':ret['平均涨幅'],
                     '涨停股票数':ret['涨停股票数'],
                     '涨幅超过7%股票数':ret['大涨股票数'],
@@ -75,6 +76,9 @@ Begin
         stock := str2array(stocks[i], ":");
         stockName := stock[0];
         stockCode := stock[1];
+        
+        if StockName[1:2] = 'ST' or StockName[2:3] = 'ST' then
+            continue;
 
         if not spec(IsTradeDay(inttodate(date)), stockCode) then
             continue;
@@ -91,7 +95,7 @@ Begin
         arrzf[num] := array('股票名称':stockName, '股票代码':stockCode, '股票涨幅':zf);
         num += 1;
     end
-    return array('平均涨幅':sumzf / num, '个股涨幅':arrzf, '涨停股票数':ztNum, '大涨股票数':zfExceed7Num);
+    return array('平均涨幅':sumzf / num, '个股涨幅':arrzf, '涨停股票数':ztNum, '大涨股票数':zfExceed7Num, '股票总数':num);
 End;
 
 // 计算股票涨幅
