@@ -1,153 +1,159 @@
-Function countStock(path,date1,date2);
-Begin
-    if not path then
-        return '非法路径';
+# coding=utf-8
+import shutil
+from time import sleep
+import requests
+import os
+from selenium import webdriver
+from selenium.webdriver.chrome.service import DEFAULT_EXECUTABLE_PATH
+from selenium.webdriver.chrome.webdriver import DEFAULT_PORT
+from selenium.webdriver.common.by import By
 
-    // 获取板块信息文件，计算板块总数
-    bkFileList := iterDir(path);
-    fileNum := length(bkFileList);
-    
-    if fileNum = 0 then
-       return path + '中没有发现任何stock文件';
 
-    // 解析板块文件，获取板块类型，板块名，股票列表
-    arrBk := parseFile(bkFileList, fileNum);
+def read_sub_urls(url):
+    ret_list = []
+    str_html = requests.get(url)
 
-    bkZf := array();
-    bkNum := length(arrBk);
-    
-    // 计算每一天，每一个板块的平均涨幅，取top5记录下来
-    for d := date1 to date2 do
-    begin
-        if not spec(isTradeDay(inttodate(d)), 'SH000001') then
-            continue;
-            
-        for i := 0 to bkNum - 1 do
-        begin
-            bkInfo := arrBk[i];
-            
-            // 计算某一个板块单日涨幅信息
-            ret := countZF(bkInfo['stocks'], d);
-            
-            // 跳过全ST板块
-            if ret['股票总数'] = 0 then
-                continue;
-                
-            ggzf := ret['个股涨幅'];
-            
-            // 对该板块的个股涨幅做一次排序
-            sortTableByField(ggzf, '股票涨幅', 0);
-            
-            // 计算龙1-龙5
-            龙头 := GetTopN(ggzf, 5);
-            龙头数 := length(龙头);
-            bestStocks := zeros(5, array('股票名称', '股票涨幅'));
-            for j := 0 to 龙头数 - 1 do
-                bestStocks[j] := array('股票名称':龙头[j]['股票名称']+'('+龙头[j]['股票代码']+')',
-                              '股票涨幅':龙头[j]['股票涨幅']);
-                
-            // 保存板块涨幅信息
-            bkZf[i] := array('板块类型':bkInfo['bkType'], '板块名称':bkInfo['bkName'],
-                    '股票总数':ret['股票总数'],
-                    '板块平均涨幅':ret['平均涨幅'],
-                    '涨停股票数':ret['涨停股票数'],
-                    '涨幅超过7%股票数':ret['大涨股票数'],
-                    '龙一股票':bestStocks[0]['股票名称'], '龙一涨幅':bestStocks[0]['股票涨幅'],
-                    '龙二股票':bestStocks[1]['股票名称'], '龙二涨幅':bestStocks[1]['股票涨幅'],
-                    '龙三股票':bestStocks[2]['股票名称'], '龙三涨幅':bestStocks[2]['股票涨幅'],
-                    '龙四股票':bestStocks[3]['股票名称'], '龙四涨幅':bestStocks[3]['股票涨幅'],
-                    '龙五股票':bestStocks[4]['股票名称'], '龙五涨幅':bestStocks[4]['股票涨幅']);
-        end
-        
-        // 按板块平均涨幅一列排序
-        sortTableByField(bkZf,"板块平均涨幅", 0);
-        store(bkZf, d);
-    end
-End;
+    in_div = False
+    index = 0
+    for line in str_html.text.split('\n'):
+        if line.find('<div class="pop-cont"') != -1:
+            in_div = True
+            index = index + 1
 
-Function countZF(stocks, date);
-Begin
-    sumzf := 0.0;
-    num := 0;
-    stockNum := length(stocks);
-    arrzf := array();
-    ztNum := 0;
-    zfExceed7Num := 0;
-    for i := 0 to stockNum - 1 do
-    begin
-        if not stocks[i] then
-            continue;
+        if line.find('</div>') != -1 and in_div:
+            in_div = False
 
-        stock := str2array(stocks[i], ":");
-        stockName := stock[0];
-        stockCode := stock[1];
-        
-        if StockName[1:2] = 'ST' or StockName[2:3] = 'ST' then
-            continue;
+        if in_div and index <= 2 and line.find('<a href=') != -1:
+            strs = line.split('"')
+            if index == 1:
+                type_ = '行业资金'
+            else:
+                type_ = '概念资金'
+            ref = 'http://quote.eastmoney.com/center/boardlist.html#boards2-90.%s' % strs[1].split('/')[-1]
+            ret_list.append((type_, ref, strs[2][1:-4].replace('/', '')))
+    return ret_list
 
-        if not spec(IsTradeDay(inttodate(date)), stockCode) then
-            continue;
 
-        if spec(StockIsZt(inttodate(date)), stockCode) then
-            ztNum += 1;
-             
-        zf := getZF(date, stockCode);
-        
-        if zf > 7 then
-           zfExceed7Num += 1;
-           
-        sumzf += zf;
-        arrzf[num] := array('股票名称':stockName, '股票代码':stockCode, '股票涨幅':zf);
-        num += 1;
-    end
-    return array('平均涨幅':sumzf / num, '个股涨幅':arrzf, '涨停股票数':ztNum, '大涨股票数':zfExceed7Num, '股票总数':num);
-End;
+def download(sub_url, num, total_num):
+    print("downloading (%d / %d)" % (num, total_num) + sub_url[0] + ' ' + sub_url[1] + ' ' + sub_url[2])
 
-// 计算股票涨幅
-Function getZF(date, stockCode);
-Begin
-    EndT:= inttodate(date);
-    return spec(StockZf4(EndT), stockCode);
-End;
+    ret_list = list()
+    options = webdriver.ChromeOptions()
+    options.add_argument('headless')
+    browser = webdriver.Chrome(DEFAULT_EXECUTABLE_PATH, DEFAULT_PORT, options)
+    browser.get(sub_url[1])
 
-// 遍历目录中的stock文件
-Function iterDir(dirPath);
-Begin
-    arrFiles := rdo2 filelist("", dirPath + '\\*.stock');
-    result := array();
-    for i := 0 to length(arrFiles) - 1 do
-    begin
-        result[i] := dirPath + '\\' + arrFiles[i]['FileName'];
-    end
-    return result;
-End;
+    page_count = None
+    last_result = read_page(browser.page_source)
+    index = 1
+    if not last_result:
+        print('got an empty page, index = %d' % index)
+        return None
 
-Function parseFile(stockFileList, fileNum);
-begin
-    retArray := array();
-    for i := 0 to fileNum - 1 do
-    begin
-        fileName := str2array(stockFileList[i], '\\')[3];
-        arr := str2array(fileName, '.');
-        bkType := arr[0];
-        bkName := arr[1];
+    for res in last_result:
+        ret_list.append(res)
 
-        size := rdo2 filesize("", stockFileList[i]);
-        retRead := rdo2 readFile(rwraw(), "", stockFileList[i], 0, size, data);
-        if not retRead then
-            return;
+    while True:
+        element = browser.find_element(By.CLASS_NAME, "page-wrapper")
+        try:
+            button = element.find_element(By.CLASS_NAME, "next.paginate_button")
+            if not page_count:
+                page_count = 0
+                buttons = element.find_elements(By.CLASS_NAME, "paginate_button")
+                for button in buttons:
+                    data_index = button.get_attribute("data-index")
+                    if data_index:
+                        page_count = max(page_count, int(data_index))
+        except:
+            break
+        else:
+            browser.execute_script("$(arguments[0]).click()", button)
+            sleep(0.3)
 
-        if not data then
-           return;
+        result = read_page(browser.page_source)
+        index += 1
+        if not result:
+            print('got an empty page, index = %d' % index)
+            return None
 
-        stocks := str2array(data, ";");
-        retArray[i] := array('bkType':bkType, 'bkName':bkName, 'stocks': stocks);
-    end
-    return retArray;
-End;
+        if result != last_result:
+            last_result = result
+            for res in last_result:
+                ret_list.append(res)
+        else:
+            print('got a same page, index = %d' % index)
+            return None
 
-Function store(data, d);
-begin
-     fileName := "D:\\板块涨幅\\" + IntToStr(d) + '.xls';
-     rdo2 exportfile(ftxls(), "", fileName, data);
-end;
+        if len(last_result) % 20 != 0 or page_count == index:
+            break
+
+    return ret_list
+
+
+def read_page(page):
+    ret_list = []
+    start = None
+    write_num = 1
+    while True:
+        index = page.find("unify", start)
+        if index == -1:
+            break
+        else:
+            i = index
+            i1 = i2 = -1
+
+            while True:
+                if i == len(page):
+                    break
+                elif page[i] == '>':
+                    i1 = i
+                elif page[i] == '<':
+                    i2 = i
+                    break
+                i += 1
+
+            if i1 > 0 and i2 > 0:
+                if i2 - i1 > 1:
+                    if (write_num % 2) == 1:
+                        number = page[i1 + 1:i2]
+                    else:
+                        ret_list.append(page[i1 + 1:i2] + ':' + number + ';')
+                    write_num += 1
+                start = i2 + 1
+            else:
+                print("parse html error")
+                break
+    return ret_list
+
+
+def store(path, bkType, bkName, stockList):
+    print(len(stockList))
+    f = open(path + bkType + '.' + bkName + '.stock', "w+")
+    for stock in stockList:
+        f.write(stock)
+    f.close()
+
+
+if __name__ == '__main__':
+    if os.path.exists("crawler"):
+        shutil.rmtree("crawler")
+    os.mkdir("crawler")
+
+    sub_urls = read_sub_urls('https://data.eastmoney.com/bkzj/gn.html')
+
+    total_num = len(sub_urls)
+    num = 0
+    for sub_url in sub_urls:
+        if sub_url[2].find('ST') != -1 or sub_url[2].find('昨日') != -1:
+            continue
+
+        num += 1
+        retry = 0
+        while retry < 16:
+            ret = download(sub_url, num, total_num)
+            if not ret:
+                retry += 1
+                print("download " + sub_url[0] + ' ' + sub_url[1] + ' ' + sub_url[2] + ' failed, retry = %d' % retry)
+            else:
+                store('crawler\\', sub_url[0], sub_url[2], ret)
+                break
